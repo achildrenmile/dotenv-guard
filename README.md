@@ -78,6 +78,32 @@ npm test        # vitest
 npm run lint    # eslint
 ```
 
+## How this repo is built
+
+dotenv-guard is both a real tool and an open experiment. The implementation was
+produced by autonomous agent loops using
+[zeroshot](https://github.com/the-open-engine/zeroshot), with each task defined
+as an issue carrying explicit acceptance criteria under [`issues/`](./issues).
+
+The point is not "AI builds it for you." It is to observe where such a loop
+carries and where it does not. Three findings from the runs so far:
+
+1. **Deterministic goal** (core validation) — passed in a single run, evidence
+   based, and correct. The loop is strongest where "correct" is mechanically
+   checkable.
+2. **Fuzzy goal** (friendlier errors) — passed, but only because the planner
+   defined its own criteria for what "user-friendly" means. Whether the result
+   was actually good could only be judged by a human.
+3. **Invariant** (never print secret values) — verified correctly, but only
+   because it was supplied up front as an explicit acceptance criterion backed
+   by a test. The loop enforces standards; it does not choose them.
+
+Every run was cross-checked by hand. The environment used to reproduce the runs
+is in [`Dockerfile.zeroshot`](./Dockerfile.zeroshot).
+
+Takeaway: the loop is the cheap part; defining and verifying what "done" means
+stays human work.
+
 ## License
 
 MIT
