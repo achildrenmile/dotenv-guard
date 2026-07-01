@@ -1,0 +1,37 @@
+{
+  "name": "dotenv-guard",
+  "version": "0.0.0",
+  "description": "Validate .env files against a schema",
+  "type": "module",
+  "bin": {
+    "dotenv-guard": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts"
+  },
+  "keywords": [
+    "dotenv",
+    "env",
+    "validation",
+    "schema",
+    "cli"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  }
+}
