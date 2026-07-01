@@ -8,23 +8,56 @@
  * Exit codes:
  *   0 = valid
  *   1 = validation errors (or usage/parse errors)
- *
- * STATUS: stub. No logic implemented yet — see issues/01-core-validation.md.
  */
 
 /**
  * Parse argv, load schema + env, run validation, print findings, set exit code.
- *
- * TODO: implement (see issues/01-core-validation.md and issues/02-friendly-errors.md).
- * - parse --schema and --file flags
- * - loadSchema() + parseEnv()
- * - validate()
- * - print findings (masking secret values — see issues/03-secret-safety.md)
- * - process.exit(result.valid ? 0 : 1)
  */
-export function main(_argv: string[]): void {
-  // TODO: implement
-  throw new Error('not implemented');
+import { readFileSync } from 'node:fs';
+import { loadSchema } from './schema.js';
+import { parseEnv, validate } from './validator.js';
+import { formatReport } from './format.js';
+
+export function main(argv: string[]): void {
+  const color = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+  let schemaPath: string | undefined;
+  let envPath: string | undefined;
+
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--schema') {
+      schemaPath = argv[++i];
+    } else if (argv[i] === '--file') {
+      envPath = argv[++i];
+    }
+  }
+
+  if (!schemaPath || !envPath) {
+    console.error('Usage: dotenv-guard --schema <path> --file <path>');
+    process.exitCode = 1;
+    return;
+  }
+
+  let result;
+  try {
+    const schema = loadSchema(schemaPath);
+    const raw = readFileSync(envPath, 'utf8');
+    const env = parseEnv(raw);
+    result = validate(env, schema);
+  } catch (err) {
+    console.error(`Error: ${(err as Error).message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (result.findings.length === 0) {
+    console.log(
+      color ? '\x1b[32m✔\x1b[0m dotenv-guard: OK — no issues found' : 'dotenv-guard: OK — no issues found',
+    );
+  } else {
+    console.log(formatReport(result.findings, { color }));
+  }
+
+  process.exitCode = result.valid ? 0 : 1;
 }
 
 main(process.argv.slice(2));

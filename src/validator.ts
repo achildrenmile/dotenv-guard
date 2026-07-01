@@ -7,11 +7,29 @@
  * INVARIANT (see issues/03-secret-safety.md): the VALUE of a variable whose
  * type is 'secret' must NEVER appear in any output — not in messages, not in
  * logs. Only the variable name may be shown; the value is always masked.
- *
- * STATUS: stub. No logic implemented yet — see issues/01-core-validation.md.
  */
 
 import type { Schema } from './schema.js';
+
+/** Known placeholder secret values that indicate a value was never replaced. */
+const PLACEHOLDER_SECRET_VALUES = new Set([
+  'changeme',
+  'change_me',
+  'change-me',
+  'todo',
+  'xxx',
+  'password',
+  'secret',
+  'placeholder',
+  'your-secret-here',
+  'test',
+  'example',
+  'fixme',
+  'dummy',
+  'apikey',
+  'api_key',
+  '123456',
+]);
 
 /** Severity of a validation finding. */
 export type Severity = 'error' | 'warning';
@@ -33,20 +51,43 @@ export interface ValidationResult {
 /**
  * Parse the raw text of a .env file into a name -> value map.
  *
- * TODO: implement (see issues/01-core-validation.md).
- *
  * @param raw Raw file contents.
  */
-export function parseEnv(_raw: string): Record<string, string> {
-  // TODO: implement
-  throw new Error('not implemented');
+export function parseEnv(raw: string): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, eqIdx).trim();
+    let value = trimmed.slice(eqIdx + 1).trim();
+
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    result[key] = value;
+  }
+
+  return result;
 }
 
 /**
  * Validate an env map against a schema.
  *
- * TODO: implement (see issues/01-core-validation.md).
- * Must check, per type:
+ * Checks, per type:
  * - string: present when required
  * - url:    parseable URL with a scheme
  * - port:   integer within 1..65535
@@ -57,7 +98,79 @@ export function parseEnv(_raw: string): Record<string, string> {
  * @param env    Parsed env map (name -> value).
  * @param schema Parsed schema.
  */
-export function validate(_env: Record<string, string>, _schema: Schema): ValidationResult {
-  // TODO: implement
-  throw new Error('not implemented');
+export function validate(env: Record<string, string>, schema: Schema): ValidationResult {
+  const findings: Finding[] = [];
+
+  for (const [name, rule] of Object.entries(schema)) {
+    const value = env[name];
+    const present = value !== undefined && value !== '';
+
+    if (!present) {
+      if (rule.required) {
+        findings.push({
+          severity: 'error',
+          variable: name,
+          message: `${name} is required but missing`,
+        });
+      }
+      continue;
+    }
+
+    switch (rule.type) {
+      case 'string':
+        break;
+      case 'secret':
+        if (PLACEHOLDER_SECRET_VALUES.has(value.trim().toLowerCase())) {
+          findings.push({
+            severity: 'warning',
+            variable: name,
+            message: `${name} looks like a placeholder secret — replace it with a real value before deploying`,
+          });
+        }
+        break;
+      case 'url':
+        try {
+          new URL(value);
+        } catch {
+          findings.push({
+            severity: 'error',
+            variable: name,
+            message: `${name} must be a valid URL with a scheme (got "${value}")`,
+          });
+        }
+        break;
+      case 'port':
+        if (!/^\d+$/.test(value)) {
+          findings.push({
+            severity: 'error',
+            variable: name,
+            message: `${name} must be a port between 1 and 65535 (got "${value}")`,
+          });
+        } else {
+          const port = Number(value);
+          if (port < 1 || port > 65535) {
+            findings.push({
+              severity: 'error',
+              variable: name,
+              message: `${name} must be a port between 1 and 65535 (got "${value}")`,
+            });
+          }
+        }
+        break;
+      case 'enum':
+        if (!rule.values?.includes(value)) {
+          findings.push({
+            severity: 'error',
+            variable: name,
+            message: `${name} must be one of [${rule.values?.join(', ')}] (got "${value}")`,
+          });
+        }
+        break;
+    }
+  }
+
+  return {
+    valid: findings.every((f) => f.severity !== 'error'),
+    findings,
+  };
 }
