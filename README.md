@@ -3,15 +3,14 @@
 Validate `.env` files against a schema — catch missing variables, type
 violations, and risky placeholder secrets before they reach production.
 
-> ⚠️ **Status: scaffold only.** This repository is currently a **skeleton**.
-> The validation logic is **not implemented** — `src/` contains typed stubs
-> with `TODO`s, and `tests/` is empty. Nothing here is finished or production
-> ready. The implementation is planned and tracked as tasks under
-> [`issues/`](./issues). See [Status / Roadmap](#status--roadmap).
+> **Status: working.** Core validation, grouped friendly error output, and the
+> secret-safety invariant are all implemented and tested. The tool is also an
+> ongoing experiment built via [zeroshot](https://github.com/the-open-engine/zeroshot)
+> — see [How this repo is built](#how-this-repo-is-built).
 
-## What it should do
+## What it does
 
-Validate a `.env` file against a `.env.schema`. The schema declares, per
+Validates a `.env` file against a `.env.schema`. The schema declares, per
 variable, what type it must be and whether it is required. dotenv-guard reads
 both files, checks every variable against its rule, and reports problems in a
 human-readable way:
@@ -48,7 +47,7 @@ LOG_LEVEL: { type: enum, values: [debug, info, warn, error], required: false }
 API_SECRET: { type: secret, required: true }
 ```
 
-## Planned usage
+## Usage
 
 ```bash
 dotenv-guard --schema .env.schema --file .env
@@ -57,15 +56,15 @@ dotenv-guard --schema .env.schema --file .env
 - Exit code **`0`** — file is valid.
 - Exit code **`1`** — validation errors were found.
 
-## Status / Roadmap
+## Roadmap
 
-The tool is not built yet. Work is split into three tasks under
-[`issues/`](./issues):
+The work was split into three tasks under [`issues/`](./issues), all now
+implemented and tested:
 
 1. [`01-core-validation.md`](./issues/01-core-validation.md) — load schema,
    parse `.env`, validate all types, correct exit codes. (Deterministic.)
-2. [`02-friendly-errors.md`](./issues/02-friendly-errors.md) — make the error
-   output more helpful. (Open-ended.)
+2. [`02-friendly-errors.md`](./issues/02-friendly-errors.md) — group and clarify
+   the error output. (Open-ended.)
 3. [`03-secret-safety.md`](./issues/03-secret-safety.md) — guarantee secret
    values never appear in any output. (Invariant.)
 
@@ -80,6 +79,10 @@ npm run lint    # eslint
 
 ## How this repo is built
 
+![deterministic](https://img.shields.io/badge/deterministic_goal-passed-brightgreen)
+![fuzzy goal](https://img.shields.io/badge/fuzzy_goal-loop_set_the_bar-yellow)
+![invariant](https://img.shields.io/badge/invariant-only_if_specified-orange)
+
 dotenv-guard is both a real tool and an open experiment. The implementation was
 produced by autonomous agent loops using
 [zeroshot](https://github.com/the-open-engine/zeroshot), with each task defined
@@ -88,15 +91,14 @@ as an issue carrying explicit acceptance criteria under [`issues/`](./issues).
 The point is not "AI builds it for you." It is to observe where such a loop
 carries and where it does not. Three findings from the runs so far:
 
-1. **Deterministic goal** (core validation) — passed in a single run, evidence
-   based, and correct. The loop is strongest where "correct" is mechanically
-   checkable.
-2. **Fuzzy goal** (friendlier errors) — passed, but only because the planner
-   defined its own criteria for what "user-friendly" means. Whether the result
-   was actually good could only be judged by a human.
-3. **Invariant** (never print secret values) — verified correctly, but only
-   because it was supplied up front as an explicit acceptance criterion backed
-   by a test. The loop enforces standards; it does not choose them.
+> [!NOTE]
+> **Deterministic goal — core validation.** Passed in a single run, evidence-based and correct. The loop shines where "correct" is checkable.
+
+> [!WARNING]
+> **Fuzzy goal — friendlier errors.** Passed, but only because the planner defined its own criteria for "user-friendly". Whether the result was actually good could only be judged by a human.
+
+> [!IMPORTANT]
+> **Invariant — never print secret values.** Verified correctly, but only because it was given up front as an explicit acceptance criterion with a test. The loop enforces standards; it doesn't choose them.
 
 Every run was cross-checked by hand. The environment used to reproduce the runs
 is in [`Dockerfile.zeroshot`](./Dockerfile.zeroshot).
